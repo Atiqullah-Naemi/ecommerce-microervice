@@ -1,0 +1,43 @@
+version: '3.9'
+
+services:
+  mongodb:
+    image: mongo:5
+    container_name: mongodb
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    ports:
+      - '9092:9092'
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  user-service:
+    build: .
+    container_name: user-service
+    depends_on:
+      - mongodb
+      - kafka
+    environment:
+      DATABASE_URL: mongodb://mongodb:27017/nest_microservice
+    ports:
+      - '3000:3000'
+    command: sh -c "npx prisma generate && npm run start:dev"
+
+volumes:
+  mongo_data:
